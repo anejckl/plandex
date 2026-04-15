@@ -6,7 +6,7 @@ import { FormsModule } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ApiService } from '../../core/api.service';
 import { TimerService } from './timer.service';
-import { CardDetail, Card, Label, ChecklistItem, Checklist } from '../../shared/models';
+import { CardDetail, Card, Label, ChecklistItem, Checklist, Assignee, BoardMember } from '../../shared/models';
 import { DurationPipe } from '../../shared/duration.pipe';
 import { MarkdownPipe } from '../../shared/markdown.pipe';
 
@@ -131,6 +131,56 @@ const LABEL_COLORS = [
                       </div>
                     </div>
                   }
+                </div>
+              }
+            </div>
+
+            <!-- Assignees section -->
+            <div class="mb-4">
+              <div class="flex items-center justify-between mb-2">
+                <label class="text-xs font-medium text-text-secondary uppercase tracking-wide">Assignees</label>
+                <button class="plandex-btn-ghost text-xs px-2 py-0.5" (click)="toggleAssigneePanel()">
+                  {{ showAssigneePanel() ? 'Done' : '+ Assign' }}
+                </button>
+              </div>
+
+              <div class="flex flex-wrap gap-1 mb-2">
+                @for (a of card()!.assignees; track a.userId) {
+                  <span
+                    class="px-2 py-0.5 rounded-full text-white text-xs font-medium flex items-center gap-1"
+                    [style.background-color]="assigneeColor(a.userId)"
+                    [title]="a.email"
+                  >
+                    <span class="font-semibold">{{ assigneeInitials(a.name) }}</span>
+                    <span>{{ a.name }}</span>
+                    @if (showAssigneePanel()) {
+                      <button class="opacity-70 hover:opacity-100" (click)="unassign(a.userId)">✕</button>
+                    }
+                  </span>
+                }
+                @if (card()!.assignees.length === 0) {
+                  <span class="text-xs text-text-muted">Nobody assigned</span>
+                }
+              </div>
+
+              @if (showAssigneePanel()) {
+                <div class="border border-border rounded-lg p-3 bg-surface">
+                  <p class="text-xs font-medium text-text-secondary mb-2">Board members</p>
+                  @if (unassignedMembers().length === 0) {
+                    <p class="text-xs text-text-muted">Everyone is already assigned.</p>
+                  }
+                  <div class="flex flex-wrap gap-1">
+                    @for (m of unassignedMembers(); track m.userId) {
+                      <button
+                        class="px-2 py-0.5 rounded-full text-white text-xs font-medium opacity-80 hover:opacity-100 flex items-center gap-1"
+                        [style.background-color]="assigneeColor(m.userId)"
+                        (click)="assign(m.userId)"
+                      >
+                        <span class="font-semibold">{{ assigneeInitials(m.name) }}</span>
+                        <span>{{ m.name }}</span>
+                      </button>
+                    }
+                  </div>
                 </div>
               }
             </div>
@@ -333,12 +383,15 @@ export class CardDetailComponent implements OnInit {
   @Input({ required: true }) cardId!: number;
   @Input({ required: true }) boardId!: number;
   @Input() boardLabels = signal<Label[]>([]);
+  @Input() boardMembers = signal<BoardMember[]>([]);
+  @Input() currentUserId = 0;
   @Output() close = new EventEmitter<void>();
   @Output() cardDeleted = new EventEmitter<number>();
   @Output() cardUpdated = new EventEmitter<CardDetail>();
   @Output() labelCreated = new EventEmitter<Label>();
   @Output() labelDeleted = new EventEmitter<number>();
   @Output() cardDuplicated = new EventEmitter<Card>();
+  @Output() cardAssigneesChanged = new EventEmitter<{ cardId: number; assignees: Assignee[] }>();
 
   private readonly api = inject(ApiService);
   private readonly timerService = inject(TimerService);
@@ -355,6 +408,13 @@ export class CardDetailComponent implements OnInit {
   newLabelName = '';
   newLabelColor = LABEL_COLORS[4];
   readonly labelColors = LABEL_COLORS;
+
+  showAssigneePanel = signal(false);
+
+  readonly unassignedMembers = computed(() => {
+    const assignedIds = new Set((this.card()?.assignees ?? []).map((a) => a.userId));
+    return this.boardMembers().filter((m) => !assignedIds.has(m.userId));
+  });
 
   addingChecklist = signal(false);
   newChecklistTitle = '';
@@ -612,5 +672,50 @@ export class CardDetailComponent implements OnInit {
 
   doneCount(items: ChecklistItem[]): number {
     return items.filter((i) => i.isDone).length;
+  }
+
+  // --- Assignees ---
+  toggleAssigneePanel(): void {
+    this.showAssigneePanel.update((v) => !v);
+  }
+
+  assign(userId: number): void {
+    this.api.post<Assignee>(`/cards/${this.cardId}/assignees`, { userId }).subscribe({
+      next: (assignee) => {
+        this.card.update((c) => {
+          if (!c) return c;
+          const updated = { ...c, assignees: [...c.assignees, assignee] };
+          this.cardAssigneesChanged.emit({ cardId: c.id, assignees: updated.assignees });
+          return updated;
+        });
+      },
+    });
+  }
+
+  unassign(userId: number): void {
+    this.api.delete(`/cards/${this.cardId}/assignees/${userId}`).subscribe({
+      next: () => {
+        this.card.update((c) => {
+          if (!c) return c;
+          const updated = { ...c, assignees: c.assignees.filter((a) => a.userId !== userId) };
+          this.cardAssigneesChanged.emit({ cardId: c.id, assignees: updated.assignees });
+          return updated;
+        });
+      },
+    });
+  }
+
+  assigneeInitials(name: string): string {
+    return name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((p) => p[0]?.toUpperCase() ?? '')
+      .join('') || '?';
+  }
+
+  assigneeColor(userId: number): string {
+    const hues = [210, 260, 340, 30, 160, 190, 290, 60];
+    return `hsl(${hues[userId % hues.length]}, 55%, 50%)`;
   }
 }

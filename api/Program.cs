@@ -37,6 +37,26 @@ builder.Services.AddOptions<Microsoft.AspNetCore.Authentication.JwtBearer.JwtBea
             ClockSkew = TimeSpan.FromSeconds(30),
             NameClaimType = JwtRegisteredClaimNames.Sub
         };
+
+        // EventSource can't set custom headers, so accept the access token from
+        // ?access_token= for SSE endpoints only. This matches the SignalR
+        // pattern and is scoped to the board events path so no other endpoint
+        // picks up a URL-embedded token.
+        opts.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
+        {
+            OnMessageReceived = ctx =>
+            {
+                var accessToken = ctx.Request.Query["access_token"].ToString();
+                var path = ctx.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken)
+                    && path.StartsWithSegments("/api/boards")
+                    && path.Value!.EndsWith("/events"))
+                {
+                    ctx.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization();
@@ -57,6 +77,8 @@ builder.Services.AddScoped<ICardService, CardService>();
 builder.Services.AddScoped<ILabelService, LabelService>();
 builder.Services.AddScoped<IChecklistService, ChecklistService>();
 builder.Services.AddScoped<ITimeTrackingService, TimeTrackingService>();
+builder.Services.AddScoped<IBoardMemberService, BoardMemberService>();
+builder.Services.AddScoped<ICardAssigneeService, CardAssigneeService>();
 
 builder.Services.AddControllers();
 

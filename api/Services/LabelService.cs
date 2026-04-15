@@ -21,7 +21,7 @@ public class LabelService : ILabelService
 
     public async Task<LabelDto?> CreateAsync(int boardId, int userId, CreateLabelDto dto)
     {
-        var board = await _db.Boards.FirstOrDefaultAsync(b => b.Id == boardId && b.OwnerId == userId);
+        var board = await _db.Boards.AccessibleBy(userId).FirstOrDefaultAsync(b => b.Id == boardId);
         if (board is null) return null;
 
         var label = new Label { BoardId = boardId, Name = dto.Name.Trim(), Color = dto.Color };
@@ -35,9 +35,9 @@ public class LabelService : ILabelService
     public async Task<bool> DeleteAsync(int labelId, int userId)
     {
         var label = await _db.Labels
-            .Include(l => l.Board)
+            .Include(l => l.Board).ThenInclude(b => b.Members)
             .FirstOrDefaultAsync(l => l.Id == labelId);
-        if (label is null || label.Board.OwnerId != userId) return false;
+        if (label is null || !label.Board.Members.Any(m => m.UserId == userId)) return false;
 
         var boardId = label.BoardId;
         _db.Labels.Remove(label);
@@ -49,11 +49,11 @@ public class LabelService : ILabelService
     public async Task<bool> AssignAsync(int cardId, int labelId, int userId)
     {
         var card = await _db.Cards
+            .AccessibleBy(userId)
             .Include(c => c.List).ThenInclude(l => l.Board)
             .FirstOrDefaultAsync(c => c.Id == cardId);
         var label = await _db.Labels.FirstOrDefaultAsync(l => l.Id == labelId);
         if (card is null || label is null) return false;
-        if (card.List.Board.OwnerId != userId) return false;
         if (card.List.Board.Id != label.BoardId) return false;
 
         var existing = await _db.CardLabels.FindAsync(cardId, labelId);
@@ -70,9 +70,10 @@ public class LabelService : ILabelService
     public async Task<bool> UnassignAsync(int cardId, int labelId, int userId)
     {
         var card = await _db.Cards
+            .AccessibleBy(userId)
             .Include(c => c.List).ThenInclude(l => l.Board)
             .FirstOrDefaultAsync(c => c.Id == cardId);
-        if (card is null || card.List.Board.OwnerId != userId) return false;
+        if (card is null) return false;
 
         var link = await _db.CardLabels.FindAsync(cardId, labelId);
         if (link is null) return true;

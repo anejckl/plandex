@@ -22,15 +22,13 @@ public class CardService : ICardService
     private readonly IBoardEventBus _bus;
     public CardService(PlandexDbContext db, IBoardEventBus bus) { _db = db; _bus = bus; }
 
-    private IQueryable<Card> CardsOwnedBy(int userId) =>
-        _db.Cards.Where(c => c.List.Board.OwnerId == userId && c.ArchivedAt == null);
-
     public async Task<CardDto?> CreateAsync(int listId, int userId, CreateCardDto dto)
     {
         var list = await _db.Lists
+            .AccessibleBy(userId)
             .Include(l => l.Board)
             .FirstOrDefaultAsync(l => l.Id == listId);
-        if (list is null || list.Board.OwnerId != userId) return null;
+        if (list is null) return null;
 
         var count = await _db.Cards.CountAsync(c => c.ListId == listId && c.ArchivedAt == null);
         var pos = dto.Position ?? count;
@@ -53,7 +51,7 @@ public class CardService : ICardService
         await _db.SaveChangesAsync();
 
         var cardDto = new CardDto(card.Id, card.ListId, card.Title, card.Description, card.Position,
-            card.DueDate, new List<LabelDto>(), 0, 0, 0, null);
+            card.DueDate, new List<LabelDto>(), 0, 0, 0, null, new List<AssigneeDto>());
         _bus.Publish(list.Board.Id, new BoardEvent("card-created", cardDto));
         return cardDto;
     }
@@ -61,11 +59,13 @@ public class CardService : ICardService
     public async Task<CardDetailDto?> GetAsync(int cardId, int userId)
     {
         var card = await _db.Cards
+            .AccessibleBy(userId)
             .Include(c => c.List)
             .Include(c => c.CardLabels).ThenInclude(cl => cl.Label)
             .Include(c => c.Checklists).ThenInclude(ch => ch.Items)
             .Include(c => c.TimeEntries)
-            .FirstOrDefaultAsync(c => c.Id == cardId && c.ArchivedAt == null && c.List.Board.OwnerId == userId);
+            .Include(c => c.Assignees).ThenInclude(a => a.User)
+            .FirstOrDefaultAsync(c => c.Id == cardId && c.ArchivedAt == null);
 
         return card is null ? null : MapDetail(card, userId);
     }
@@ -73,12 +73,14 @@ public class CardService : ICardService
     public async Task<CardDetailDto?> UpdateAsync(int cardId, int userId, UpdateCardDto dto)
     {
         var card = await _db.Cards
+            .AccessibleBy(userId)
             .Include(c => c.List).ThenInclude(l => l.Board)
             .Include(c => c.CardLabels).ThenInclude(cl => cl.Label)
             .Include(c => c.Checklists).ThenInclude(ch => ch.Items)
             .Include(c => c.TimeEntries)
+            .Include(c => c.Assignees).ThenInclude(a => a.User)
             .FirstOrDefaultAsync(c => c.Id == cardId && c.ArchivedAt == null);
-        if (card is null || card.List.Board.OwnerId != userId) return null;
+        if (card is null) return null;
 
         if (dto.Title is not null) card.Title = dto.Title.Trim();
         if (dto.Description is not null) card.Description = dto.Description;
@@ -88,10 +90,13 @@ public class CardService : ICardService
         var targetListId = dto.ListId ?? card.ListId;
         if (dto.ListId.HasValue && dto.ListId.Value != card.ListId)
         {
+            // Target list must belong to a board the user can access (and in
+            // practice to the same board as the current list).
             var targetList = await _db.Lists
+                .AccessibleBy(userId)
                 .Include(l => l.Board)
                 .FirstOrDefaultAsync(l => l.Id == dto.ListId.Value);
-            if (targetList is null || targetList.Board.OwnerId != userId) return null;
+            if (targetList is null) return null;
         }
 
         if (dto.Position.HasValue || targetListId != card.ListId)
@@ -152,9 +157,10 @@ public class CardService : ICardService
     public async Task<bool> DeleteAsync(int cardId, int userId)
     {
         var card = await _db.Cards
+            .AccessibleBy(userId)
             .Include(c => c.List).ThenInclude(l => l.Board)
             .FirstOrDefaultAsync(c => c.Id == cardId && c.ArchivedAt == null);
-        if (card is null || card.List.Board.OwnerId != userId) return false;
+        if (card is null) return false;
 
         var listId = card.ListId;
         var oldPos = card.Position;
@@ -173,24 +179,29 @@ public class CardService : ICardService
     public async Task<IReadOnlyList<CardDto>> ListArchivedAsync(int boardId, int userId)
     {
         var cards = await _db.Cards
+            .AccessibleBy(userId)
             .Include(c => c.List).ThenInclude(l => l.Board)
             .Include(c => c.CardLabels).ThenInclude(cl => cl.Label)
-            .Where(c => c.List.Board.Id == boardId && c.List.Board.OwnerId == userId && c.ArchivedAt != null)
+            .Include(c => c.Assignees).ThenInclude(a => a.User)
+            .Where(c => c.List.Board.Id == boardId && c.ArchivedAt != null)
             .OrderByDescending(c => c.ArchivedAt)
             .ToListAsync();
 
         return cards.Select(c => new CardDto(
             c.Id, c.ListId, c.Title, c.Description, c.Position, c.DueDate,
             c.CardLabels.Select(cl => new LabelDto(cl.LabelId, cl.Label.BoardId, cl.Label.Name, cl.Label.Color)).ToList(),
-            0, 0, 0, null)).ToList();
+            0, 0, 0, null,
+            c.Assignees.Select(a => new AssigneeDto(a.UserId, a.User.Name, a.User.Email)).ToList())).ToList();
     }
 
     public async Task<bool> RestoreAsync(int cardId, int userId)
     {
         var card = await _db.Cards
+            .AccessibleBy(userId)
             .Include(c => c.List).ThenInclude(l => l.Board)
+            .Include(c => c.Assignees).ThenInclude(a => a.User)
             .FirstOrDefaultAsync(c => c.Id == cardId && c.ArchivedAt != null);
-        if (card is null || card.List.Board.OwnerId != userId) return false;
+        if (card is null) return false;
 
         var newPos = await _db.Cards.CountAsync(c => c.ListId == card.ListId && c.ArchivedAt == null);
         card.Position = newPos;
@@ -199,16 +210,20 @@ public class CardService : ICardService
 
         _bus.Publish(card.List.Board.Id, new BoardEvent("card-created",
             new CardDto(card.Id, card.ListId, card.Title, card.Description, card.Position,
-                card.DueDate, new List<LabelDto>(), 0, 0, 0, null)));
+                card.DueDate, new List<LabelDto>(), 0, 0, 0, null,
+                card.Assignees.Select(a => new AssigneeDto(a.UserId, a.User.Name, a.User.Email)).ToList())));
         return true;
     }
 
     public async Task<bool> PurgeAsync(int cardId, int userId)
     {
+        // Hard-delete is owner-only — purging someone else's archived cards is
+        // destructive enough that members shouldn't be able to do it.
         var card = await _db.Cards
-            .Include(c => c.List).ThenInclude(l => l.Board)
+            .Include(c => c.List).ThenInclude(l => l.Board).ThenInclude(b => b.Members)
             .FirstOrDefaultAsync(c => c.Id == cardId && c.ArchivedAt != null);
-        if (card is null || card.List.Board.OwnerId != userId) return false;
+        if (card is null) return false;
+        if (!card.List.Board.Members.Any(m => m.UserId == userId && m.Role == BoardRole.Owner)) return false;
 
         _db.Cards.Remove(card);
         await _db.SaveChangesAsync();
@@ -237,6 +252,7 @@ public class CardService : ICardService
                 .Select(t => new TimeEntryDto(t.Id, t.CardId, t.UserId, t.StartedAt, t.EndedAt, t.DurationSeconds))
                 .ToList(),
             totalClosed,
-            active?.StartedAt);
+            active?.StartedAt,
+            c.Assignees.Select(a => new AssigneeDto(a.UserId, a.User.Name, a.User.Email)).ToList());
     }
 }

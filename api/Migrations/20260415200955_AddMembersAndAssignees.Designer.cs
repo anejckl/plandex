@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Plandex.Api.Data;
@@ -11,9 +12,11 @@ using Plandex.Api.Data;
 namespace Plandex.Api.Migrations
 {
     [DbContext(typeof(PlandexDbContext))]
-    partial class PlandexDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260415200955_AddMembersAndAssignees")]
+    partial class AddMembersAndAssignees
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

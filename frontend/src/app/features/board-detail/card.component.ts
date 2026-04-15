@@ -47,6 +47,19 @@ import { TimerService } from './timer.service';
             </span>
           }
 
+          <!-- Assignee avatars -->
+          @if ((card.assignees?.length ?? 0) > 0) {
+            <div class="flex -space-x-1.5">
+              @for (a of card.assignees; track a.userId) {
+                <div
+                  class="w-5 h-5 rounded-full ring-2 ring-white flex items-center justify-center text-white text-[9px] font-semibold"
+                  [style.background-color]="avatarColor(a.userId)"
+                  [title]="a.name"
+                >{{ avatarInitials(a.name) }}</div>
+              }
+            </div>
+          }
+
           <!-- Timer -->
           @if (isActive()) {
             <span class="flex items-center gap-1 text-xs text-timer font-mono ml-auto">
@@ -71,6 +84,20 @@ export class CardComponent {
   readonly timerState = toSignal(this.timerService.active$, { initialValue: null });
   readonly isActive = computed(() => this.timerState()?.cardId === this.card?.id);
   readonly accentColor = computed(() => (this.card?.labels ?? [])[0]?.color ?? null);
+
+  avatarInitials(name: string): string {
+    return name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((p) => p[0]?.toUpperCase() ?? '')
+      .join('') || '?';
+  }
+
+  avatarColor(userId: number): string {
+    const hues = [210, 260, 340, 30, 160, 190, 290, 60];
+    return `hsl(${hues[userId % hues.length]}, 55%, 50%)`;
+  }
 
   dueDateClass(): string {
     if (!this.card.dueDate) return '';

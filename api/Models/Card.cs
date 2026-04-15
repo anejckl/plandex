@@ -15,4 +15,5 @@ public class Card
     public ICollection<CardLabel> CardLabels { get; set; } = new List<CardLabel>();
     public ICollection<Checklist> Checklists { get; set; } = new List<Checklist>();
     public ICollection<TimeEntry> TimeEntries { get; set; } = new List<TimeEntry>();
+    public ICollection<CardAssignee> Assignees { get; set; } = new List<CardAssignee>();
 }

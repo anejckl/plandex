@@ -1,4 +1,5 @@
 import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -7,10 +8,12 @@ import {
   moveItemInArray, transferArrayItem
 } from '@angular/cdk/drag-drop';
 import { ApiService } from '../../core/api.service';
+import { AuthService } from '../../core/auth.service';
 import { TimerService } from './timer.service';
-import { BoardDetail, Card, BoardList, Label } from '../../shared/models';
+import { BoardDetail, Card, BoardList, Label, BoardMember, Assignee } from '../../shared/models';
 import { ListComponent } from './list.component';
 import { CardDetailComponent } from './card-detail.component';
+import { MembersModalComponent } from './members-modal.component';
 import { DurationPipe } from '../../shared/duration.pipe';
 import { BoardEventsService } from './board-events.service';
 import { Subscription } from 'rxjs';
@@ -21,7 +24,7 @@ import { Subscription } from 'rxjs';
   imports: [
     CommonModule, FormsModule,
     CdkDropList, CdkDrag, CdkDragPlaceholder,
-    ListComponent, CardDetailComponent, DurationPipe,
+    ListComponent, CardDetailComponent, MembersModalComponent, DurationPipe,
   ],
   template: `
     @if (loading()) {
@@ -75,6 +78,27 @@ import { Subscription } from 'rxjs';
             </div>
           }
 
+          <!-- Members avatar stack -->
+          <button
+            class="flex items-center gap-1 ml-2 hover:bg-surface rounded px-1 py-0.5"
+            (click)="showMembers.set(true)"
+            title="Manage members"
+          >
+            <div class="flex -space-x-2">
+              @for (m of boardMembers().slice(0, 4); track m.userId) {
+                <div
+                  class="w-6 h-6 rounded-full ring-2 ring-white flex items-center justify-center text-white text-[10px] font-semibold"
+                  [style.background-color]="memberColor(m.userId)"
+                  [title]="m.name + ' (' + m.role + ')'"
+                >{{ memberInitials(m.name) }}</div>
+              }
+            </div>
+            @if (boardMembers().length > 4) {
+              <span class="text-xs text-text-muted">+{{ boardMembers().length - 4 }}</span>
+            }
+            <span class="text-xs text-text-secondary ml-1">Members</span>
+          </button>
+
           <!-- Search -->
           <div class="ml-auto flex items-center gap-2">
             <input
@@ -88,11 +112,13 @@ import { Subscription } from 'rxjs';
               [class.text-primary-600]="showArchived()"
               (click)="toggleArchived()"
             >Archived</button>
-            <!-- Delete board -->
-            <button
-              class="plandex-btn-ghost text-xs text-danger hover:bg-red-50"
-              (click)="deleteBoard()"
-            >Delete board</button>
+            <!-- Delete board (owner only) -->
+            @if (isBoardOwner()) {
+              <button
+                class="plandex-btn-ghost text-xs text-danger hover:bg-red-50"
+                (click)="deleteBoard()"
+              >Delete board</button>
+            }
           </div>
         </div>
 
@@ -191,12 +217,27 @@ import { Subscription } from 'rxjs';
         [cardId]="selectedCardId()!"
         [boardId]="board()!.id"
         [boardLabels]="boardLabels"
+        [boardMembers]="boardMembers"
+        [currentUserId]="currentUserId()"
         (close)="selectedCardId.set(null)"
         (cardDeleted)="onCardDeleted($event)"
         (cardUpdated)="onCardUpdated($event)"
         (labelCreated)="onLabelCreated($event)"
         (labelDeleted)="onLabelDeleted($event)"
         (cardDuplicated)="onCardDuplicated($event)"
+        (cardAssigneesChanged)="onCardAssigneesChanged($event)"
+      />
+    }
+
+    <!-- Members modal -->
+    @if (showMembers() && board()) {
+      <app-members-modal
+        [boardId]="board()!.id"
+        [currentUserId]="currentUserId()"
+        [members]="boardMembers()"
+        (close)="showMembers.set(false)"
+        (memberAdded)="onMemberAdded($event)"
+        (memberRemoved)="onMemberRemoved($event)"
       />
     }
   `,
@@ -205,6 +246,7 @@ export class BoardComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(ApiService);
+  private readonly auth = inject(AuthService);
   readonly timerService = inject(TimerService);
   private readonly boardEvents = inject(BoardEventsService);
   private eventsSub?: Subscription;
@@ -213,6 +255,7 @@ export class BoardComponent implements OnInit, OnDestroy {
   loading = signal(true);
   selectedCardId = signal<number | null>(null);
   showAddList = signal(false);
+  showMembers = signal(false);
   newListName = '';
 
   editingBoardName = signal(false);
@@ -220,6 +263,15 @@ export class BoardComponent implements OnInit, OnDestroy {
   searchQuery = '';
 
   readonly boardLabels = signal<Label[]>([]);
+  readonly boardMembers = signal<BoardMember[]>([]);
+
+  private readonly currentUser = toSignal(this.auth.user$, { initialValue: null });
+  readonly currentUserId = computed(() => this.currentUser()?.id ?? 0);
+
+  readonly isBoardOwner = computed(() => {
+    const userId = this.currentUserId();
+    return this.boardMembers().some((m) => m.userId === userId && m.role === 'Owner');
+  });
 
   showArchived = signal(false);
   archivedCards = signal<Card[]>([]);
@@ -260,6 +312,7 @@ export class BoardComponent implements OnInit, OnDestroy {
       next: (b) => {
         this.board.set(b);
         this.boardLabels.set(b.labels);
+        this.boardMembers.set(b.members);
         this.loading.set(false);
         this.connectSSE(id);
       },
@@ -276,6 +329,11 @@ export class BoardComponent implements OnInit, OnDestroy {
     this.boardEvents.connect(boardId);
     this.eventsSub = this.boardEvents.events.subscribe((ev) => {
       switch (ev.type) {
+        case 'board-updated': {
+          const p = ev.data as { id: number; name: string };
+          this.board.update((b) => b ? { ...b, name: p.name } : b);
+          break;
+        }
         case 'card-created':
           this.onSSECardCreated(ev.data as Card);
           break;
@@ -306,8 +364,96 @@ export class BoardComponent implements OnInit, OnDestroy {
           this.onLabelDeleted(p.labelId);
           break;
         }
+        case 'member-added':
+          this.onMemberAdded(ev.data as BoardMember);
+          break;
+        case 'member-removed': {
+          const p = ev.data as { userId: number };
+          this.onMemberRemoved(p.userId);
+          break;
+        }
+        case 'card-assigned': {
+          const p = ev.data as { cardId: number; assignee: Assignee };
+          this.onSSECardAssignee(p.cardId, p.assignee, true);
+          break;
+        }
+        case 'card-unassigned': {
+          const p = ev.data as { cardId: number; userId: number };
+          this.onSSECardAssignee(p.cardId, { userId: p.userId, name: '', email: '' }, false);
+          break;
+        }
       }
     });
+  }
+
+  private onSSECardAssignee(cardId: number, assignee: Assignee, add: boolean): void {
+    this.board.update((b) => {
+      if (!b) return b;
+      return {
+        ...b,
+        lists: b.lists.map((l) => ({
+          ...l,
+          cards: l.cards.map((c) => {
+            if (c.id !== cardId) return c;
+            if (add) {
+              if ((c.assignees ?? []).some((a) => a.userId === assignee.userId)) return c;
+              return { ...c, assignees: [...(c.assignees ?? []), assignee] };
+            }
+            return { ...c, assignees: (c.assignees ?? []).filter((a) => a.userId !== assignee.userId) };
+          }),
+        })),
+      };
+    });
+  }
+
+  onMemberAdded(member: BoardMember): void {
+    this.boardMembers.update((ms) => {
+      if (ms.some((m) => m.userId === member.userId)) return ms;
+      return [...ms, member];
+    });
+  }
+
+  onMemberRemoved(userId: number): void {
+    this.boardMembers.update((ms) => ms.filter((m) => m.userId !== userId));
+    // Drop their assignments from every card in local state too.
+    this.board.update((b) => b ? {
+      ...b,
+      lists: b.lists.map((l) => ({
+        ...l,
+        cards: l.cards.map((c) => ({
+          ...c,
+          assignees: (c.assignees ?? []).filter((a) => a.userId !== userId),
+        })),
+      })),
+    } : b);
+    // If the removed user is ME, I've just lost access — bounce to boards list.
+    if (userId === this.currentUserId()) {
+      this.router.navigate(['/boards']);
+    }
+  }
+
+  onCardAssigneesChanged({ cardId, assignees }: { cardId: number; assignees: Assignee[] }): void {
+    this.board.update((b) => b ? {
+      ...b,
+      lists: b.lists.map((l) => ({
+        ...l,
+        cards: l.cards.map((c) => c.id === cardId ? { ...c, assignees } : c),
+      })),
+    } : b);
+  }
+
+  memberInitials(name: string): string {
+    return name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((p) => p[0]?.toUpperCase() ?? '')
+      .join('') || '?';
+  }
+
+  memberColor(userId: number): string {
+    const hues = [210, 260, 340, 30, 160, 190, 290, 60];
+    return `hsl(${hues[userId % hues.length]}, 55%, 50%)`;
   }
 
   private onSSECardCreated(card: Card): void {

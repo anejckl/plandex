@@ -9,6 +9,9 @@ public static class DbSeeder
     public const string DemoEmail = "demo@plandex.dev";
     public const string DemoPassword = "demo1234";
 
+    public const string Demo2Email = "demo2@plandex.dev";
+    public const string Demo2Password = "demo1234";
+
     public static async Task SeedAsync(PlandexDbContext db, IPasswordHasher hasher, CancellationToken ct = default)
     {
         if (await db.Users.AnyAsync(ct)) return;
@@ -22,18 +25,38 @@ public static class DbSeeder
             PasswordHash = hasher.Hash(DemoPassword),
             CreatedAt = now
         };
-        db.Users.Add(demo);
+        var demo2 = new User
+        {
+            Email = Demo2Email,
+            Name = "Demo Collaborator",
+            PasswordHash = hasher.Hash(Demo2Password),
+            CreatedAt = now
+        };
+        db.Users.AddRange(demo, demo2);
         await db.SaveChangesAsync(ct);
 
         await SeedPersonalBoardAsync(db, demo.Id, now, ct);
         await SeedWebsiteBoardAsync(db, demo.Id, now, ct);
-        await SeedRoadmapBoardAsync(db, demo.Id, now, ct);
+        var roadmapBoardId = await SeedRoadmapBoardAsync(db, demo.Id, now, ct);
+
+        // Pre-share the roadmap board with demo2 so the collaboration feature is
+        // discoverable the moment you log in as either user.
+        db.BoardMembers.Add(new BoardMember
+        {
+            BoardId = roadmapBoardId,
+            UserId = demo2.Id,
+            Role = BoardRole.Member,
+            AddedAt = now,
+        });
+        await db.SaveChangesAsync(ct);
     }
 
     private static async Task SeedPersonalBoardAsync(PlandexDbContext db, int ownerId, DateTime now, CancellationToken ct)
     {
         var board = new Board { Name = "Personal Tasks", OwnerId = ownerId, CreatedAt = now };
         db.Boards.Add(board);
+        await db.SaveChangesAsync(ct);
+        db.BoardMembers.Add(new BoardMember { BoardId = board.Id, UserId = ownerId, Role = BoardRole.Owner, AddedAt = now });
         await db.SaveChangesAsync(ct);
 
         var lHome = new Label { BoardId = board.Id, Name = "Home", Color = "#3B82F6" };
@@ -97,6 +120,8 @@ public static class DbSeeder
     {
         var board = new Board { Name = "Website Redesign", OwnerId = ownerId, CreatedAt = now };
         db.Boards.Add(board);
+        await db.SaveChangesAsync(ct);
+        db.BoardMembers.Add(new BoardMember { BoardId = board.Id, UserId = ownerId, Role = BoardRole.Owner, AddedAt = now });
         await db.SaveChangesAsync(ct);
 
         var lDesign = new Label { BoardId = board.Id, Name = "Design", Color = "#A855F7" };
@@ -175,10 +200,12 @@ public static class DbSeeder
         await db.SaveChangesAsync(ct);
     }
 
-    private static async Task SeedRoadmapBoardAsync(PlandexDbContext db, int ownerId, DateTime now, CancellationToken ct)
+    private static async Task<int> SeedRoadmapBoardAsync(PlandexDbContext db, int ownerId, DateTime now, CancellationToken ct)
     {
         var board = new Board { Name = "Q2 Roadmap", OwnerId = ownerId, CreatedAt = now };
         db.Boards.Add(board);
+        await db.SaveChangesAsync(ct);
+        db.BoardMembers.Add(new BoardMember { BoardId = board.Id, UserId = ownerId, Role = BoardRole.Owner, AddedAt = now });
         await db.SaveChangesAsync(ct);
 
         var lFeature = new Label { BoardId = board.Id, Name = "Feature", Color = "#22C55E" };
@@ -245,5 +272,6 @@ public static class DbSeeder
         );
 
         await db.SaveChangesAsync(ct);
+        return board.Id;
     }
 }

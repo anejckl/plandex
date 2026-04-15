@@ -20,7 +20,7 @@ public class ListService : IListService
 
     public async Task<ListDto?> CreateAsync(int boardId, int userId, CreateListDto dto)
     {
-        var board = await _db.Boards.FirstOrDefaultAsync(b => b.Id == boardId && b.OwnerId == userId);
+        var board = await _db.Boards.AccessibleBy(userId).FirstOrDefaultAsync(b => b.Id == boardId);
         if (board is null) return null;
 
         var count = await _db.Lists.CountAsync(l => l.BoardId == boardId);
@@ -44,9 +44,10 @@ public class ListService : IListService
     public async Task<ListDto?> UpdateAsync(int listId, int userId, UpdateListDto dto)
     {
         var list = await _db.Lists
+            .AccessibleBy(userId)
             .Include(l => l.Board)
             .FirstOrDefaultAsync(l => l.Id == listId);
-        if (list is null || list.Board.OwnerId != userId) return null;
+        if (list is null) return null;
 
         if (dto.Name is not null) list.Name = dto.Name.Trim();
 
@@ -84,9 +85,10 @@ public class ListService : IListService
     public async Task<bool> DeleteAsync(int listId, int userId)
     {
         var list = await _db.Lists
+            .AccessibleBy(userId)
             .Include(l => l.Board)
             .FirstOrDefaultAsync(l => l.Id == listId);
-        if (list is null || list.Board.OwnerId != userId) return false;
+        if (list is null) return false;
 
         var boardId = list.BoardId;
         var oldPos = list.Position;

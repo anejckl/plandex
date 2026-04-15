@@ -47,6 +47,20 @@ export interface TimeEntry {
   durationSeconds: number | null;
 }
 
+export interface Assignee {
+  userId: number;
+  name: string;
+  email: string;
+}
+
+export interface BoardMember {
+  userId: number;
+  email: string;
+  name: string;
+  role: 'Owner' | 'Member';
+  addedAt: string;
+}
+
 export interface Card {
   id: number;
   listId: number;
@@ -59,6 +73,7 @@ export interface Card {
   totalLoggedSeconds: number;
   activeTimerStartedAt: string | null;
   labels: Label[];
+  assignees: Assignee[];
 }
 
 export interface CardDetail extends Card {
@@ -77,6 +92,7 @@ export interface BoardList {
 export interface BoardDetail extends Board {
   lists: BoardList[];
   labels: Label[];
+  members: BoardMember[];
 }
 
 export interface ActiveTimer {

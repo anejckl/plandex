@@ -17,6 +17,8 @@ public class PlandexDbContext : DbContext
     public DbSet<ChecklistItem> ChecklistItems => Set<ChecklistItem>();
     public DbSet<TimeEntry> TimeEntries => Set<TimeEntry>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<BoardMember> BoardMembers => Set<BoardMember>();
+    public DbSet<CardAssignee> CardAssignees => Set<CardAssignee>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -123,6 +125,35 @@ public class PlandexDbContext : DbContext
                 .HasForeignKey(x => x.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => x.TokenHash).IsUnique();
+        });
+
+        b.Entity<BoardMember>(e =>
+        {
+            e.HasKey(x => new { x.BoardId, x.UserId });
+            e.Property(x => x.Role).HasConversion<int>();
+            e.HasOne(x => x.Board)
+                .WithMany(bd => bd.Members)
+                .HasForeignKey(x => x.BoardId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.User)
+                .WithMany(u => u.BoardMemberships)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => x.UserId);
+        });
+
+        b.Entity<CardAssignee>(e =>
+        {
+            e.HasKey(x => new { x.CardId, x.UserId });
+            e.HasOne(x => x.Card)
+                .WithMany(c => c.Assignees)
+                .HasForeignKey(x => x.CardId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.User)
+                .WithMany(u => u.CardAssignments)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => x.UserId);
         });
     }
 }

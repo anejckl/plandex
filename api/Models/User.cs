@@ -11,4 +11,6 @@ public class User
     public ICollection<Board> Boards { get; set; } = new List<Board>();
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
     public ICollection<TimeEntry> TimeEntries { get; set; } = new List<TimeEntry>();
+    public ICollection<BoardMember> BoardMemberships { get; set; } = new List<BoardMember>();
+    public ICollection<CardAssignee> CardAssignments { get; set; } = new List<CardAssignee>();
 }

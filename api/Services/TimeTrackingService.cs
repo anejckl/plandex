@@ -24,9 +24,10 @@ public class TimeTrackingService : ITimeTrackingService
     public async Task<TimeEntryDto?> StartAsync(int cardId, int userId)
     {
         var card = await _db.Cards
+            .AccessibleBy(userId)
             .Include(c => c.List).ThenInclude(l => l.Board)
             .FirstOrDefaultAsync(c => c.Id == cardId);
-        if (card is null || card.List.Board.OwnerId != userId) return null;
+        if (card is null) return null;
 
         await using var tx = await _db.Database.BeginTransactionAsync();
 
@@ -65,9 +66,10 @@ public class TimeTrackingService : ITimeTrackingService
     public async Task<TimeEntryDto?> StopAsync(int cardId, int userId)
     {
         var card = await _db.Cards
+            .AccessibleBy(userId)
             .Include(c => c.List).ThenInclude(l => l.Board)
             .FirstOrDefaultAsync(c => c.Id == cardId);
-        if (card is null || card.List.Board.OwnerId != userId) return null;
+        if (card is null) return null;
 
         var entry = await _db.TimeEntries
             .FirstOrDefaultAsync(t => t.CardId == cardId && t.UserId == userId && t.EndedAt == null);
@@ -84,9 +86,10 @@ public class TimeTrackingService : ITimeTrackingService
     public async Task<IReadOnlyList<TimeEntryDto>?> ListForCardAsync(int cardId, int userId)
     {
         var card = await _db.Cards
+            .AccessibleBy(userId)
             .Include(c => c.List).ThenInclude(l => l.Board)
             .FirstOrDefaultAsync(c => c.Id == cardId);
-        if (card is null || card.List.Board.OwnerId != userId) return null;
+        if (card is null) return null;
 
         return await _db.TimeEntries
             .Where(t => t.CardId == cardId)
@@ -98,10 +101,12 @@ public class TimeTrackingService : ITimeTrackingService
     public async Task<bool> DeleteAsync(int entryId, int userId)
     {
         var entry = await _db.TimeEntries
-            .Include(t => t.Card).ThenInclude(c => c.List).ThenInclude(l => l.Board)
+            .Include(t => t.Card).ThenInclude(c => c.List).ThenInclude(l => l.Board).ThenInclude(b => b.Members)
             .FirstOrDefaultAsync(t => t.Id == entryId);
         if (entry is null) return false;
-        if (entry.UserId != userId && entry.Card.List.Board.OwnerId != userId) return false;
+        // Users can delete their own entries; board owners can delete anyone's.
+        var isOwner = entry.Card.List.Board.Members.Any(m => m.UserId == userId && m.Role == BoardRole.Owner);
+        if (entry.UserId != userId && !isOwner) return false;
 
         _db.TimeEntries.Remove(entry);
         await _db.SaveChangesAsync();

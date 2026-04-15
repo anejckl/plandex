@@ -22,9 +22,10 @@ public class ChecklistService : IChecklistService
     public async Task<ChecklistDto?> CreateAsync(int cardId, int userId, CreateChecklistDto dto)
     {
         var card = await _db.Cards
+            .AccessibleBy(userId)
             .Include(c => c.List).ThenInclude(l => l.Board)
             .FirstOrDefaultAsync(c => c.Id == cardId);
-        if (card is null || card.List.Board.OwnerId != userId) return null;
+        if (card is null) return null;
 
         var cl = new Checklist { CardId = cardId, Title = dto.Title.Trim() };
         _db.Checklists.Add(cl);
@@ -35,9 +36,9 @@ public class ChecklistService : IChecklistService
     public async Task<bool> DeleteAsync(int checklistId, int userId)
     {
         var cl = await _db.Checklists
-            .Include(c => c.Card).ThenInclude(c => c.List).ThenInclude(l => l.Board)
+            .Include(c => c.Card).ThenInclude(c => c.List).ThenInclude(l => l.Board).ThenInclude(b => b.Members)
             .FirstOrDefaultAsync(c => c.Id == checklistId);
-        if (cl is null || cl.Card.List.Board.OwnerId != userId) return false;
+        if (cl is null || !cl.Card.List.Board.Members.Any(m => m.UserId == userId)) return false;
 
         _db.Checklists.Remove(cl);
         await _db.SaveChangesAsync();
@@ -47,9 +48,9 @@ public class ChecklistService : IChecklistService
     public async Task<ChecklistItemDto?> AddItemAsync(int checklistId, int userId, CreateChecklistItemDto dto)
     {
         var cl = await _db.Checklists
-            .Include(c => c.Card).ThenInclude(c => c.List).ThenInclude(l => l.Board)
+            .Include(c => c.Card).ThenInclude(c => c.List).ThenInclude(l => l.Board).ThenInclude(b => b.Members)
             .FirstOrDefaultAsync(c => c.Id == checklistId);
-        if (cl is null || cl.Card.List.Board.OwnerId != userId) return null;
+        if (cl is null || !cl.Card.List.Board.Members.Any(m => m.UserId == userId)) return null;
 
         var count = await _db.ChecklistItems.CountAsync(i => i.ChecklistId == checklistId);
         var pos = dto.Position ?? count;
@@ -75,9 +76,9 @@ public class ChecklistService : IChecklistService
     public async Task<ChecklistItemDto?> UpdateItemAsync(int itemId, int userId, UpdateChecklistItemDto dto)
     {
         var item = await _db.ChecklistItems
-            .Include(i => i.Checklist).ThenInclude(cl => cl.Card).ThenInclude(c => c.List).ThenInclude(l => l.Board)
+            .Include(i => i.Checklist).ThenInclude(cl => cl.Card).ThenInclude(c => c.List).ThenInclude(l => l.Board).ThenInclude(b => b.Members)
             .FirstOrDefaultAsync(i => i.Id == itemId);
-        if (item is null || item.Checklist.Card.List.Board.OwnerId != userId) return null;
+        if (item is null || !item.Checklist.Card.List.Board.Members.Any(m => m.UserId == userId)) return null;
 
         if (dto.Text is not null) item.Text = dto.Text.Trim();
         if (dto.IsDone.HasValue) item.IsDone = dto.IsDone.Value;
@@ -91,9 +92,9 @@ public class ChecklistService : IChecklistService
     public async Task<bool> DeleteItemAsync(int itemId, int userId)
     {
         var item = await _db.ChecklistItems
-            .Include(i => i.Checklist).ThenInclude(cl => cl.Card).ThenInclude(c => c.List).ThenInclude(l => l.Board)
+            .Include(i => i.Checklist).ThenInclude(cl => cl.Card).ThenInclude(c => c.List).ThenInclude(l => l.Board).ThenInclude(b => b.Members)
             .FirstOrDefaultAsync(i => i.Id == itemId);
-        if (item is null || item.Checklist.Card.List.Board.OwnerId != userId) return false;
+        if (item is null || !item.Checklist.Card.List.Board.Members.Any(m => m.UserId == userId)) return false;
 
         var checklistId = item.ChecklistId;
         var oldPos = item.Position;

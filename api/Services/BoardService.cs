@@ -17,13 +17,18 @@ public interface IBoardService
 public class BoardService : IBoardService
 {
     private readonly PlandexDbContext _db;
+    private readonly IBoardEventBus _bus;
 
-    public BoardService(PlandexDbContext db) => _db = db;
+    public BoardService(PlandexDbContext db, IBoardEventBus bus)
+    {
+        _db = db;
+        _bus = bus;
+    }
 
     public async Task<IReadOnlyList<BoardSummaryDto>> ListAsync(int userId)
     {
         return await _db.Boards
-            .Where(b => b.OwnerId == userId)
+            .AccessibleBy(userId)
             .OrderByDescending(b => b.CreatedAt)
             .Select(b => new BoardSummaryDto(b.Id, b.Name, b.CreatedAt))
             .ToListAsync();
@@ -32,11 +37,14 @@ public class BoardService : IBoardService
     public async Task<BoardDetailDto?> GetAsync(int boardId, int userId)
     {
         var board = await _db.Boards
+            .AccessibleBy(userId)
             .Include(b => b.Labels)
+            .Include(b => b.Members).ThenInclude(m => m.User)
             .Include(b => b.Lists).ThenInclude(l => l.Cards).ThenInclude(c => c.CardLabels).ThenInclude(cl => cl.Label)
             .Include(b => b.Lists).ThenInclude(l => l.Cards).ThenInclude(c => c.Checklists).ThenInclude(ch => ch.Items)
             .Include(b => b.Lists).ThenInclude(l => l.Cards).ThenInclude(c => c.TimeEntries)
-            .FirstOrDefaultAsync(b => b.Id == boardId && b.OwnerId == userId);
+            .Include(b => b.Lists).ThenInclude(l => l.Cards).ThenInclude(c => c.Assignees).ThenInclude(a => a.User)
+            .FirstOrDefaultAsync(b => b.Id == boardId);
 
         if (board is null) return null;
 
@@ -55,6 +63,11 @@ public class BoardService : IBoardService
                 .ToList(),
             board.Labels
                 .Select(lb => new LabelDto(lb.Id, lb.BoardId, lb.Name, lb.Color))
+                .ToList(),
+            board.Members
+                .OrderBy(m => m.Role)
+                .ThenBy(m => m.User.Name)
+                .Select(m => new BoardMemberDto(m.UserId, m.User.Email, m.User.Name, m.Role.ToString(), m.AddedAt))
                 .ToList());
     }
 
@@ -76,7 +89,8 @@ public class BoardService : IBoardService
             checklistItems.Count,
             checklistItems.Count(i => i.IsDone),
             totalClosed,
-            active?.StartedAt);
+            active?.StartedAt,
+            c.Assignees.Select(a => new AssigneeDto(a.UserId, a.User.Name, a.User.Email)).ToList());
     }
 
     public async Task<BoardSummaryDto> CreateAsync(int userId, string name)
@@ -84,21 +98,34 @@ public class BoardService : IBoardService
         var board = new Board { Name = name.Trim(), OwnerId = userId };
         _db.Boards.Add(board);
         await _db.SaveChangesAsync();
+
+        // Owner is a BoardMember with role Owner — the single source of truth for
+        // access checks. OwnerId on Board is kept for "who created it" semantics.
+        _db.BoardMembers.Add(new BoardMember
+        {
+            BoardId = board.Id,
+            UserId = userId,
+            Role = BoardRole.Owner,
+            AddedAt = board.CreatedAt,
+        });
+        await _db.SaveChangesAsync();
+
         return new BoardSummaryDto(board.Id, board.Name, board.CreatedAt);
     }
 
     public async Task<bool> RenameAsync(int boardId, int userId, string name)
     {
-        var board = await _db.Boards.FirstOrDefaultAsync(b => b.Id == boardId && b.OwnerId == userId);
+        var board = await _db.Boards.OwnedBy(userId).FirstOrDefaultAsync(b => b.Id == boardId);
         if (board is null) return false;
         board.Name = name.Trim();
         await _db.SaveChangesAsync();
+        _bus.Publish(boardId, new BoardEvent("board-updated", new { id = boardId, name = board.Name }));
         return true;
     }
 
     public async Task<bool> DeleteAsync(int boardId, int userId)
     {
-        var board = await _db.Boards.FirstOrDefaultAsync(b => b.Id == boardId && b.OwnerId == userId);
+        var board = await _db.Boards.OwnedBy(userId).FirstOrDefaultAsync(b => b.Id == boardId);
         if (board is null) return false;
         _db.Boards.Remove(board);
         await _db.SaveChangesAsync();

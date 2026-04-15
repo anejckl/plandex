@@ -9,7 +9,12 @@ public record BoardDetailDto(
     string Name,
     DateTime CreatedAt,
     List<ListDto> Lists,
-    List<LabelDto> Labels);
+    List<LabelDto> Labels,
+    List<BoardMemberDto> Members);
+
+public record BoardMemberDto(int UserId, string Email, string Name, string Role, DateTime AddedAt);
+
+public record AssigneeDto(int UserId, string Name, string Email);
 
 public record ListDto(
     int Id,
@@ -29,7 +34,8 @@ public record CardDto(
     int ChecklistTotal,
     int ChecklistDone,
     int TotalLoggedSeconds,
-    DateTime? ActiveTimerStartedAt);
+    DateTime? ActiveTimerStartedAt,
+    List<AssigneeDto> Assignees);
 
 public record CardDetailDto(
     int Id,
@@ -42,7 +48,11 @@ public record CardDetailDto(
     List<ChecklistDto> Checklists,
     List<TimeEntryDto> TimeEntries,
     int TotalLoggedSeconds,
-    DateTime? ActiveTimerStartedAt);
+    DateTime? ActiveTimerStartedAt,
+    List<AssigneeDto> Assignees);
+
+public record AddBoardMemberDto([Required, EmailAddress, StringLength(320)] string Email);
+public record AddCardAssigneeDto([Required] int UserId);
 
 public record LabelDto(int Id, int BoardId, string Name, string Color);
 
