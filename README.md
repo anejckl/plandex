@@ -64,6 +64,23 @@ Open http://localhost:4200
 `docker compose` will refuse to start if `POSTGRES_PASSWORD` or `JWT_SECRET`
 are missing.
 
+### Demo data
+
+On a fresh database (no users), the API automatically seeds a demo account
+with three populated boards so you can explore without creating everything
+by hand:
+
+- **Email:** `demo@plandex.dev`
+- **Password:** `demo1234`
+
+Seeding runs only once, and only when the `users` table is empty — it will
+never touch an existing database. To re-seed, drop the `pgdata` volume:
+
+```bash
+docker compose down -v
+docker compose up --build
+```
+
 ---
 
 ## Tests

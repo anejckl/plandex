@@ -67,6 +67,9 @@ if (!app.Environment.IsEnvironment("Testing"))
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<PlandexDbContext>();
     db.Database.Migrate();
+
+    var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
+    await DbSeeder.SeedAsync(db, hasher);
 }
 
 app.UseCors();
