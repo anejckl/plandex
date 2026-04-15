@@ -2,13 +2,18 @@ services:
   db:
     image: postgres:16
     environment:
-      POSTGRES_DB: plandex
-      POSTGRES_USER: plandex
-      POSTGRES_PASSWORD: plandex123
+      POSTGRES_DB: ${POSTGRES_DB:-plandex}
+      POSTGRES_USER: ${POSTGRES_USER:-plandex}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required (see .env.example)}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-plandex} -d ${POSTGRES_DB:-plandex}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
 volumes:
   pgdata:
