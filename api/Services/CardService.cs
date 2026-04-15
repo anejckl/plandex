@@ -219,11 +219,19 @@ public class CardService : ICardService
     {
         // Hard-delete is owner-only — purging someone else's archived cards is
         // destructive enough that members shouldn't be able to do it.
+        // We only need the List's BoardId to check ownership, so avoid the
+        // nested Include(b => b.Members) pattern that can return a cartesian
+        // result set. A scalar EXISTS is both faster and easier to reason about.
         var card = await _db.Cards
-            .Include(c => c.List).ThenInclude(l => l.Board).ThenInclude(b => b.Members)
+            .Include(c => c.List)
             .FirstOrDefaultAsync(c => c.Id == cardId && c.ArchivedAt != null);
         if (card is null) return false;
-        if (!card.List.Board.Members.Any(m => m.UserId == userId && m.Role == BoardRole.Owner)) return false;
+
+        var isOwner = await _db.BoardMembers.AnyAsync(m =>
+            m.BoardId == card.List.BoardId &&
+            m.UserId == userId &&
+            m.Role == BoardRole.Owner);
+        if (!isOwner) return false;
 
         _db.Cards.Remove(card);
         await _db.SaveChangesAsync();

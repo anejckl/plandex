@@ -660,8 +660,14 @@ export class BoardComponent implements OnInit, OnDestroy {
 
   purgeCard(card: Card): void {
     if (!confirm(`Permanently delete "${card.title}"? This cannot be undone.`)) return;
-    this.api.delete(`/cards/${card.id}/purge`).subscribe(() => {
-      this.archivedCards.update((cs) => cs.filter((c) => c.id !== card.id));
+    this.api.delete(`/cards/${card.id}/purge`).subscribe({
+      next: () => {
+        this.archivedCards.update((cs) => cs.filter((c) => c.id !== card.id));
+      },
+      error: (err) => {
+        // Surface the failure instead of letting the subscribe die silently.
+        alert(`Could not delete "${card.title}": ${err?.status ?? 'network error'}`);
+      },
     });
   }
 }

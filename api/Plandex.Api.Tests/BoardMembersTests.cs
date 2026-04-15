@@ -243,6 +243,62 @@ public class BoardMembersTests : IClassFixture<PlandexAppFactory>, IAsyncLifetim
     }
 
     [Fact]
+    public async Task Owner_can_purge_archived_card_with_full_dependent_state()
+    {
+        // Regression for a user-reported "Delete forever doesn't work" bug.
+        // The simple member-purge test passes, but that one archives a bare
+        // card. This test loads the card up with every kind of dependent row
+        // so a missing ON DELETE CASCADE anywhere in the schema would surface.
+        var (owner, board) = await CreateOwnerWithBoardAsync("owner13@test.com");
+        var list = await (await owner.PostAsJsonAsync($"/api/boards/{board.Id}/lists",
+            new CreateListDto("L", null))).ReadJsonAsync<ListDto>();
+        var label = await (await owner.PostAsJsonAsync($"/api/boards/{board.Id}/labels",
+            new CreateLabelDto("Tag", "#ff0000"))).ReadJsonAsync<LabelDto>();
+        var card = await (await owner.PostAsJsonAsync($"/api/lists/{list!.Id}/cards",
+            new CreateCardDto("Rich card", "body", null, null))).ReadJsonAsync<CardDto>();
+
+        // Assign the owner to their own card.
+        var ownerDetail = await owner.GetJsonAsync<BoardDetailDto>($"/api/boards/{board.Id}");
+        var ownerId = ownerDetail!.Members.Single().UserId;
+        (await owner.PostAsJsonAsync($"/api/cards/{card!.Id}/assignees",
+            new AddCardAssigneeDto(ownerId))).EnsureSuccessStatusCode();
+
+        // Assign a label.
+        (await owner.PostAsync($"/api/cards/{card.Id}/labels/{label!.Id}", null))
+            .EnsureSuccessStatusCode();
+
+        // Create a checklist with two items.
+        var checklist = await (await owner.PostAsJsonAsync($"/api/cards/{card.Id}/checklists",
+            new CreateChecklistDto("Steps"))).ReadJsonAsync<ChecklistDto>();
+        (await owner.PostAsJsonAsync($"/api/checklists/{checklist!.Id}/items",
+            new CreateChecklistItemDto("step 1", null))).EnsureSuccessStatusCode();
+        (await owner.PostAsJsonAsync($"/api/checklists/{checklist.Id}/items",
+            new CreateChecklistItemDto("step 2", null))).EnsureSuccessStatusCode();
+
+        // Start + stop a timer to create a closed time entry.
+        (await owner.PostAsync($"/api/cards/{card.Id}/timer/start", null)).EnsureSuccessStatusCode();
+        (await owner.PostAsync($"/api/cards/{card.Id}/timer/stop", null)).EnsureSuccessStatusCode();
+
+        // Bring in a second board member so purge runs against a board with
+        // multiple rows in board_members — mirrors the production scenario.
+        var m2 = _factory.CreateClient();
+        await m2.RegisterAsync("owner13-mate@test.com");
+        (await owner.PostAsJsonAsync($"/api/boards/{board.Id}/members",
+            new AddBoardMemberDto("owner13-mate@test.com"))).EnsureSuccessStatusCode();
+
+        // Archive, then purge. Both must succeed.
+        (await owner.DeleteAsync($"/api/cards/{card.Id}"))
+            .StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var purgeResp = await owner.DeleteAsync($"/api/cards/{card.Id}/purge");
+        purgeResp.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // Subsequent GET should 404 — the card is actually gone, not just
+        // re-archived.
+        (await owner.GetAsync($"/api/cards/{card.Id}"))
+            .StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task Removing_member_drops_assignments_across_multiple_cards()
     {
         var (owner, board) = await CreateOwnerWithBoardAsync("owner12@test.com");
