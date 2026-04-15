@@ -1,0 +1,7 @@
+bin/
+obj/
+Plandex.Api.Tests/
+*.user
+appsettings.*.Local.json
+.vs/
+.vscode/

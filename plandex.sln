@@ -1,0 +1,36 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "api", "api", "{D82C56D6-B2CD-F611-9E31-04638F7EC30E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Plandex.Api", "api\Plandex.Api.csproj", "{F25012CC-4CA1-0542-5F63-1A689BE1C62D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Plandex.Api.Tests", "api\Plandex.Api.Tests\Plandex.Api.Tests.csproj", "{2947294C-4D83-A59B-118B-6DEAEF03EF24}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F25012CC-4CA1-0542-5F63-1A689BE1C62D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F25012CC-4CA1-0542-5F63-1A689BE1C62D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F25012CC-4CA1-0542-5F63-1A689BE1C62D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F25012CC-4CA1-0542-5F63-1A689BE1C62D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2947294C-4D83-A59B-118B-6DEAEF03EF24}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2947294C-4D83-A59B-118B-6DEAEF03EF24}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2947294C-4D83-A59B-118B-6DEAEF03EF24}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2947294C-4D83-A59B-118B-6DEAEF03EF24}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{F25012CC-4CA1-0542-5F63-1A689BE1C62D} = {D82C56D6-B2CD-F611-9E31-04638F7EC30E}
+		{2947294C-4D83-A59B-118B-6DEAEF03EF24} = {D82C56D6-B2CD-F611-9E31-04638F7EC30E}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {84C4D53B-B444-4443-91CC-C10F52A5CD8D}
+	EndGlobalSection
+EndGlobal

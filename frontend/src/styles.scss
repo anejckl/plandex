@@ -1,0 +1,91 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body {
+    @apply h-full bg-surface font-sans text-text-primary;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+}
+
+@layer components {
+  /* Card */
+  .plandex-card {
+    @apply bg-white rounded-card shadow-card border border-border transition-shadow duration-150 cursor-pointer;
+  }
+  .plandex-card:hover {
+    @apply shadow-card-hover;
+  }
+
+  /* Buttons */
+  .plandex-btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all duration-100 focus:outline-none focus:ring-2 focus:ring-offset-1;
+  }
+  .plandex-btn:active {
+    transform: scale(0.97);
+  }
+  .plandex-btn-primary {
+    @apply plandex-btn bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500;
+  }
+  .plandex-btn-secondary {
+    @apply plandex-btn bg-white text-text-primary border border-border hover:bg-surface focus:ring-primary-400;
+  }
+  .plandex-btn-danger {
+    @apply plandex-btn bg-danger text-white hover:bg-red-600 focus:ring-red-400;
+  }
+  .plandex-btn-ghost {
+    @apply plandex-btn text-text-secondary hover:bg-surface hover:text-text-primary focus:ring-primary-400;
+  }
+
+  /* Inputs */
+  .plandex-input {
+    @apply w-full rounded-md border border-border px-3 py-2 text-sm text-text-primary placeholder:text-text-muted
+           focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-shadow duration-150;
+  }
+
+  /* Skeleton */
+  .skeleton {
+    background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+    background-size: 200% 100%;
+    @apply animate-skeleton-shimmer rounded;
+  }
+
+  /* Timer active dot */
+  .timer-active-dot {
+    @apply w-2 h-2 rounded-full bg-timer animate-pulse-timer;
+  }
+
+  /* List column */
+  .plandex-list {
+    @apply flex flex-col w-72 shrink-0 bg-surface-board rounded-lg p-2;
+  }
+
+  /* Modal backdrop */
+  .modal-backdrop {
+    @apply fixed inset-0 bg-black/40 z-40 flex items-start justify-center pt-16 animate-fade-in;
+  }
+  .modal-panel {
+    @apply bg-white rounded-xl shadow-modal w-full max-w-2xl max-h-[80vh] overflow-y-auto animate-slide-up;
+  }
+}
+
+@layer utilities {
+  .fade-in {
+    @apply animate-fade-in;
+  }
+}
+
+/* Markdown preview prose */
+.prose-sm p { @apply mb-2; }
+.prose-sm ul { @apply list-disc pl-4 mb-2; }
+.prose-sm ol { @apply list-decimal pl-4 mb-2; }
+.prose-sm h1, .prose-sm h2, .prose-sm h3 { @apply font-semibold mb-1; }
+.prose-sm code { @apply bg-surface border border-border rounded px-1 text-xs font-mono; }
+.prose-sm pre { @apply bg-surface border border-border rounded p-2 mb-2 overflow-x-auto text-xs font-mono; }
+.prose-sm a { @apply text-primary-600 underline; }
+.prose-sm blockquote { @apply border-l-4 border-border pl-3 text-text-muted italic mb-2; }
