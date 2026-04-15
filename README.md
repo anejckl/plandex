@@ -1,6 +1,6 @@
 # Plandex
 
-A Trello-style Kanban project management app with built-in time tracking per card.
+A Trello-style Kanban app with shared boards, card assignees, and built-in time tracking per card. Multiple users can collaborate on the same board in real time.
 
 **Stack:** Angular 21 (standalone) + ASP.NET Core 10 + PostgreSQL 16
 
@@ -66,12 +66,16 @@ are missing.
 
 ### Demo data
 
-On a fresh database (no users), the API automatically seeds a demo account
-with three populated boards so you can explore without creating everything
-by hand:
+On a fresh database (no users), the API seeds two demo accounts and three
+populated boards so you can explore — including the collaboration flow —
+without creating anything by hand:
 
-- **Email:** `demo@plandex.dev`
-- **Password:** `demo1234`
+- **Owner:** `demo@plandex.dev` / `demo1234` — owns all three seeded boards
+- **Collaborator:** `demo2@plandex.dev` / `demo1234` — pre-shared on the
+  **Q2 Roadmap** board as a Member
+
+Log in as either user to see shared-board behavior end to end: changes made
+by one show up live in the other's browser.
 
 Seeding runs only once, and only when the `users` table is empty — it will
 never touch an existing database. To re-seed, drop the `pgdata` volume:
@@ -80,6 +84,44 @@ never touch an existing database. To re-seed, drop the `pgdata` volume:
 docker compose down -v
 docker compose up --build
 ```
+
+---
+
+## Collaboration
+
+Boards are multi-user. Each board has **members** in one of two roles:
+
+- **Owner** — whoever created the board. Can rename the board, delete it,
+  add/remove members, and permanently purge archived cards. There must
+  always be at least one owner — the last owner cannot leave.
+- **Member** — everyone else. Can read the board, create and edit lists,
+  cards, labels and checklists, track time, and assign themselves or
+  other members to cards. Cannot rename the board, delete it, manage
+  members, or hard-delete archived cards.
+
+### Adding a member
+
+Click the member avatar stack in the board header to open the **Members**
+modal. As the owner, type the email of an existing registered user and
+click Add. There's no invite email — the target must already have a
+plandex account. Unknown emails and duplicates surface inline errors in
+the modal.
+
+### Card assignees
+
+Open a card and click **+ Assign** in the Assignees section to pick from
+the board's current members. Multiple people can be assigned to the same
+card; assignees render as stacked avatars on the card tile. Removing a
+member from a board automatically drops any card assignments they held
+on that board.
+
+### Real-time updates
+
+Any change made by one member — creating or editing a card, moving it
+between lists, renaming the board, assigning someone, adding or removing
+a member — is pushed to every other connected viewer over Server-Sent
+Events. No refresh needed. The access token is auto-refreshed when the
+EventSource connection expires, so long-lived sessions stay connected.
 
 ---
 
