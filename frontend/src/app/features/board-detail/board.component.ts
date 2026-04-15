@@ -554,11 +554,24 @@ export class BoardComponent implements OnInit, OnDestroy {
   }
 
   onAddCard({ listId, title }: { listId: number; title: string }): void {
-    this.api.post<Card>(`/lists/${listId}/cards`, { title }).subscribe((card) => {
-      this.board.update((b) => b ? {
-        ...b,
-        lists: b.lists.map((l) => l.id === listId ? { ...l, cards: [...l.cards, card] } : l),
-      } : b);
+    this.api.post<Card>(`/lists/${listId}/cards`, { title }).subscribe({
+      next: (card) => {
+        this.board.update((b) => b ? {
+          ...b,
+          lists: b.lists.map((l) => l.id === listId ? { ...l, cards: [...l.cards, card] } : l),
+        } : b);
+      },
+      error: (err) => {
+        // 429 is the dev-stage 50-cards-per-user cap. Other errors still get
+        // surfaced so we don't silently swallow failures.
+        if (err?.status === 429) {
+          const msg = err?.error?.error ??
+            'Card limit reached — 50 active cards per user during the dev stage. Archive some old cards to free up slots.';
+          alert(msg);
+        } else {
+          alert(`Could not create card: ${err?.status ?? 'network error'}`);
+        }
+      },
     });
   }
 

@@ -13,4 +13,5 @@ public class User
     public ICollection<TimeEntry> TimeEntries { get; set; } = new List<TimeEntry>();
     public ICollection<BoardMember> BoardMemberships { get; set; } = new List<BoardMember>();
     public ICollection<CardAssignee> CardAssignments { get; set; } = new List<CardAssignee>();
+    public ICollection<Card> CreatedCards { get; set; } = new List<Card>();
 }

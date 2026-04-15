@@ -102,6 +102,43 @@ public class CrudTests : IClassFixture<PlandexAppFactory>, IAsyncLifetime
     }
 
     [Fact]
+    public async Task Card_create_blocked_at_50_active_cards_per_user()
+    {
+        // Dev-stage safeguard: each user can have at most 50 active cards.
+        // The 51st POST must return 429. Archiving a card must free up a slot.
+        var client = _factory.CreateClient();
+        await client.RegisterAsync("limit@test.com");
+
+        var board = await (await client.PostAsJsonAsync("/api/boards",
+            new CreateBoardDto("Limit test"))).ReadJsonAsync<BoardSummaryDto>();
+        var list = await (await client.PostAsJsonAsync($"/api/boards/{board!.Id}/lists",
+            new CreateListDto("L", null))).ReadJsonAsync<ListDto>();
+
+        // 50 cards — all succeed.
+        var lastCardId = 0;
+        for (int i = 0; i < 50; i++)
+        {
+            var resp = await client.PostAsJsonAsync($"/api/lists/{list!.Id}/cards",
+                new CreateCardDto($"C{i}", null, null, null));
+            resp.StatusCode.Should().Be(HttpStatusCode.OK);
+            var card = await resp.ReadJsonAsync<CardDto>();
+            lastCardId = card!.Id;
+        }
+
+        // 51st — blocked.
+        var blockedResp = await client.PostAsJsonAsync($"/api/lists/{list!.Id}/cards",
+            new CreateCardDto("over-limit", null, null, null));
+        ((int)blockedResp.StatusCode).Should().Be(429);
+
+        // Archiving a card frees a slot → next POST works.
+        (await client.DeleteAsync($"/api/cards/{lastCardId}"))
+            .StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var afterArchive = await client.PostAsJsonAsync($"/api/lists/{list!.Id}/cards",
+            new CreateCardDto("after-archive", null, null, null));
+        afterArchive.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
     public async Task Checklist_items_track_progress()
     {
         var client = _factory.CreateClient();

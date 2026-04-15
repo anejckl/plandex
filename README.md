@@ -8,6 +8,19 @@ A Trello-style Kanban app with shared boards, card assignees, and built-in time 
 
 ---
 
+## Try it live
+
+A public instance runs at **https://plandex.anej.dev** so you can explore the collaboration flow without setting anything up locally.
+
+Sign in with either of the pre-seeded demo accounts:
+
+- `demo@plandex.dev` / `demo1234` — owns all three demo boards
+- `demo2@plandex.dev` / `demo1234` — shared on the **Q2 Roadmap** board as a Member
+
+> ⚠️ **It's a hobby instance on a small VPS.** Data may be reset without warning, and there's a **dev-stage limit of 50 active cards per user** to keep the demo usable. Archive cards to free up slots. Don't put anything you care about here.
+
+---
+
 ## Prerequisites
 
 - .NET 10 SDK
@@ -122,6 +135,15 @@ between lists, renaming the board, assigning someone, adding or removing
 a member — is pushed to every other connected viewer over Server-Sent
 Events. No refresh needed. The access token is auto-refreshed when the
 EventSource connection expires, so long-lived sessions stay connected.
+
+### Card limit (dev stage only)
+
+While plandex is in dev stage there's a hardcoded cap of **50 active cards
+per user** (enforced in `CardService.MaxActiveCardsPerUser`). Archived
+cards don't count — archiving a card frees up a slot. The 51st `POST` to
+`/api/lists/{id}/cards` returns HTTP 429 with a clear error message, and
+the frontend surfaces it as an alert. Remove or raise the constant when
+the project leaves dev stage.
 
 ---
 

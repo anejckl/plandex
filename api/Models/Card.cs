@@ -11,7 +11,10 @@ public class Card
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? ArchivedAt { get; set; }
 
+    public int? CreatedByUserId { get; set; }
+
     public BoardList List { get; set; } = null!;
+    public User? CreatedBy { get; set; }
     public ICollection<CardLabel> CardLabels { get; set; } = new List<CardLabel>();
     public ICollection<Checklist> Checklists { get; set; } = new List<Checklist>();
     public ICollection<TimeEntry> TimeEntries { get; set; } = new List<TimeEntry>();

@@ -5,9 +5,11 @@ using Plandex.Api.Models;
 
 namespace Plandex.Api.Services;
 
+public enum CreateCardResult { Ok, ListNotFound, LimitReached }
+
 public interface ICardService
 {
-    Task<CardDto?> CreateAsync(int listId, int userId, CreateCardDto dto);
+    Task<(CreateCardResult result, CardDto? card)> CreateAsync(int listId, int userId, CreateCardDto dto);
     Task<CardDetailDto?> GetAsync(int cardId, int userId);
     Task<CardDetailDto?> UpdateAsync(int cardId, int userId, UpdateCardDto dto);
     Task<bool> DeleteAsync(int cardId, int userId);      // soft-delete (archive)
@@ -18,17 +20,27 @@ public interface ICardService
 
 public class CardService : ICardService
 {
+    // Dev-stage safeguard: cap active cards per creator so a single user can't
+    // fill the Postgres volume on the public demo. Archiving a card frees up a
+    // slot. Remove or raise this when the project leaves dev stage.
+    public const int MaxActiveCardsPerUser = 50;
+
     private readonly PlandexDbContext _db;
     private readonly IBoardEventBus _bus;
     public CardService(PlandexDbContext db, IBoardEventBus bus) { _db = db; _bus = bus; }
 
-    public async Task<CardDto?> CreateAsync(int listId, int userId, CreateCardDto dto)
+    public async Task<(CreateCardResult result, CardDto? card)> CreateAsync(int listId, int userId, CreateCardDto dto)
     {
         var list = await _db.Lists
             .AccessibleBy(userId)
             .Include(l => l.Board)
             .FirstOrDefaultAsync(l => l.Id == listId);
-        if (list is null) return null;
+        if (list is null) return (CreateCardResult.ListNotFound, null);
+
+        var activeByUser = await _db.Cards
+            .CountAsync(c => c.CreatedByUserId == userId && c.ArchivedAt == null);
+        if (activeByUser >= MaxActiveCardsPerUser)
+            return (CreateCardResult.LimitReached, null);
 
         var count = await _db.Cards.CountAsync(c => c.ListId == listId && c.ArchivedAt == null);
         var pos = dto.Position ?? count;
@@ -45,7 +57,8 @@ public class CardService : ICardService
             Title = dto.Title.Trim(),
             Description = dto.Description,
             DueDate = dto.DueDate,
-            Position = pos
+            Position = pos,
+            CreatedByUserId = userId,
         };
         _db.Cards.Add(card);
         await _db.SaveChangesAsync();
@@ -53,7 +66,7 @@ public class CardService : ICardService
         var cardDto = new CardDto(card.Id, card.ListId, card.Title, card.Description, card.Position,
             card.DueDate, new List<LabelDto>(), 0, 0, 0, null, new List<AssigneeDto>());
         _bus.Publish(list.Board.Id, new BoardEvent("card-created", cardDto));
-        return cardDto;
+        return (CreateCardResult.Ok, cardDto);
     }
 
     public async Task<CardDetailDto?> GetAsync(int cardId, int userId)

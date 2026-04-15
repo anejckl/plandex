@@ -16,8 +16,17 @@ public class CardsController : ControllerBase
     [HttpPost("api/lists/{listId:int}/cards")]
     public async Task<ActionResult<CardDto>> Create(int listId, CreateCardDto dto)
     {
-        var card = await _cards.CreateAsync(listId, User.GetUserId(), dto);
-        return card is null ? NotFound() : Ok(card);
+        var (result, card) = await _cards.CreateAsync(listId, User.GetUserId(), dto);
+        return result switch
+        {
+            CreateCardResult.Ok => Ok(card),
+            CreateCardResult.ListNotFound => NotFound(),
+            CreateCardResult.LimitReached => StatusCode(StatusCodes.Status429TooManyRequests, new
+            {
+                error = $"Card limit reached — {CardService.MaxActiveCardsPerUser} active cards per user during dev stage. Archive old cards to free up slots.",
+            }),
+            _ => StatusCode(500),
+        };
     }
 
     [HttpGet("api/cards/{id:int}")]

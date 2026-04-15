@@ -59,6 +59,13 @@ public class PlandexDbContext : DbContext
                 .HasForeignKey(x => x.ListId)
                 .OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => new { x.ListId, x.Position });
+            // Creator FK is nullable + SET NULL on user delete so cards survive
+            // if their creator is removed, but stop counting against the limit.
+            e.HasOne(x => x.CreatedBy)
+                .WithMany(u => u.CreatedCards)
+                .HasForeignKey(x => x.CreatedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+            e.HasIndex(x => x.CreatedByUserId);
         });
 
         b.Entity<Label>(e =>

@@ -74,21 +74,21 @@ public static class DbSeeder
 
         var cards = new[]
         {
-            new Card { ListId = backlog.Id, Title = "Plan summer vacation", Description = "Research destinations, compare flights, pick dates.", Position = 0, CreatedAt = now },
-            new Card { ListId = backlog.Id, Title = "Renew passport", Position = 1, DueDate = now.AddDays(45), CreatedAt = now },
-            new Card { ListId = backlog.Id, Title = "Organize garage", Position = 2, CreatedAt = now },
+            new Card { ListId = backlog.Id, CreatedByUserId = ownerId, Title = "Plan summer vacation", Description = "Research destinations, compare flights, pick dates.", Position = 0, CreatedAt = now },
+            new Card { ListId = backlog.Id, CreatedByUserId = ownerId, Title = "Renew passport", Position = 1, DueDate = now.AddDays(45), CreatedAt = now },
+            new Card { ListId = backlog.Id, CreatedByUserId = ownerId, Title = "Organize garage", Position = 2, CreatedAt = now },
 
-            new Card { ListId = week.Id, Title = "Weekly groceries", Description = "Milk, eggs, bread, tomatoes, pasta, chicken, fruit.", Position = 0, DueDate = now.AddDays(2), CreatedAt = now },
-            new Card { ListId = week.Id, Title = "Pay electricity bill", Position = 1, DueDate = now.AddDays(4), CreatedAt = now },
-            new Card { ListId = week.Id, Title = "Call mom", Position = 2, CreatedAt = now },
-            new Card { ListId = week.Id, Title = "Dentist appointment", Description = "Dr. Novak, 10:00 — bring insurance card.", Position = 3, DueDate = now.AddDays(3), CreatedAt = now },
+            new Card { ListId = week.Id, CreatedByUserId = ownerId, Title = "Weekly groceries", Description = "Milk, eggs, bread, tomatoes, pasta, chicken, fruit.", Position = 0, DueDate = now.AddDays(2), CreatedAt = now },
+            new Card { ListId = week.Id, CreatedByUserId = ownerId, Title = "Pay electricity bill", Position = 1, DueDate = now.AddDays(4), CreatedAt = now },
+            new Card { ListId = week.Id, CreatedByUserId = ownerId, Title = "Call mom", Position = 2, CreatedAt = now },
+            new Card { ListId = week.Id, CreatedByUserId = ownerId, Title = "Dentist appointment", Description = "Dr. Novak, 10:00 — bring insurance card.", Position = 3, DueDate = now.AddDays(3), CreatedAt = now },
 
-            new Card { ListId = progress.Id, Title = "Paint living room", Description = "Second coat on the west wall. Needs to dry overnight.", Position = 0, CreatedAt = now },
-            new Card { ListId = progress.Id, Title = "Read \"Project Hail Mary\"", Position = 1, CreatedAt = now },
+            new Card { ListId = progress.Id, CreatedByUserId = ownerId, Title = "Paint living room", Description = "Second coat on the west wall. Needs to dry overnight.", Position = 0, CreatedAt = now },
+            new Card { ListId = progress.Id, CreatedByUserId = ownerId, Title = "Read \"Project Hail Mary\"", Position = 1, CreatedAt = now },
 
-            new Card { ListId = done.Id, Title = "Fix kitchen sink leak", Position = 0, CreatedAt = now.AddDays(-3) },
-            new Card { ListId = done.Id, Title = "Book car service", Position = 1, CreatedAt = now.AddDays(-5) },
-            new Card { ListId = done.Id, Title = "Submit tax forms", Position = 2, CreatedAt = now.AddDays(-7) },
+            new Card { ListId = done.Id, CreatedByUserId = ownerId, Title = "Fix kitchen sink leak", Position = 0, CreatedAt = now.AddDays(-3) },
+            new Card { ListId = done.Id, CreatedByUserId = ownerId, Title = "Book car service", Position = 1, CreatedAt = now.AddDays(-5) },
+            new Card { ListId = done.Id, CreatedByUserId = ownerId, Title = "Submit tax forms", Position = 2, CreatedAt = now.AddDays(-7) },
         };
         db.Cards.AddRange(cards);
         await db.SaveChangesAsync(ct);
@@ -140,24 +140,24 @@ public static class DbSeeder
 
         var cards = new[]
         {
-            new Card { ListId = ideas.Id, Title = "Dark mode", Description = "Full theme switcher with system-preference detection.", Position = 0, CreatedAt = now },
-            new Card { ListId = ideas.Id, Title = "Newsletter signup", Position = 1, CreatedAt = now },
-            new Card { ListId = ideas.Id, Title = "Interactive product demo", Description = "Scroll-driven animation, see [Stripe](https://stripe.com) for reference.", Position = 2, CreatedAt = now },
+            new Card { ListId = ideas.Id, CreatedByUserId = ownerId, Title = "Dark mode", Description = "Full theme switcher with system-preference detection.", Position = 0, CreatedAt = now },
+            new Card { ListId = ideas.Id, CreatedByUserId = ownerId, Title = "Newsletter signup", Position = 1, CreatedAt = now },
+            new Card { ListId = ideas.Id, CreatedByUserId = ownerId, Title = "Interactive product demo", Description = "Scroll-driven animation, see [Stripe](https://stripe.com) for reference.", Position = 2, CreatedAt = now },
 
-            new Card { ListId = todo.Id, Title = "New landing hero section", Description = "Replace the stock photo carousel with a single focused hero.", Position = 0, DueDate = now.AddDays(7), CreatedAt = now },
-            new Card { ListId = todo.Id, Title = "Redesign pricing page", Position = 1, DueDate = now.AddDays(10), CreatedAt = now },
-            new Card { ListId = todo.Id, Title = "Audit accessibility (WCAG 2.2 AA)", Position = 2, CreatedAt = now },
-            new Card { ListId = todo.Id, Title = "Migrate blog to MDX", Position = 3, CreatedAt = now },
+            new Card { ListId = todo.Id, CreatedByUserId = ownerId, Title = "New landing hero section", Description = "Replace the stock photo carousel with a single focused hero.", Position = 0, DueDate = now.AddDays(7), CreatedAt = now },
+            new Card { ListId = todo.Id, CreatedByUserId = ownerId, Title = "Redesign pricing page", Position = 1, DueDate = now.AddDays(10), CreatedAt = now },
+            new Card { ListId = todo.Id, CreatedByUserId = ownerId, Title = "Audit accessibility (WCAG 2.2 AA)", Position = 2, CreatedAt = now },
+            new Card { ListId = todo.Id, CreatedByUserId = ownerId, Title = "Migrate blog to MDX", Position = 3, CreatedAt = now },
 
-            new Card { ListId = progress.Id, Title = "Rebuild nav with Tailwind", Description = "Sticky on scroll, mobile drawer, active-section indicator.", Position = 0, DueDate = now.AddDays(3), CreatedAt = now },
-            new Card { ListId = progress.Id, Title = "Replace icon set with Lucide", Position = 1, CreatedAt = now },
+            new Card { ListId = progress.Id, CreatedByUserId = ownerId, Title = "Rebuild nav with Tailwind", Description = "Sticky on scroll, mobile drawer, active-section indicator.", Position = 0, DueDate = now.AddDays(3), CreatedAt = now },
+            new Card { ListId = progress.Id, CreatedByUserId = ownerId, Title = "Replace icon set with Lucide", Position = 1, CreatedAt = now },
 
-            new Card { ListId = review.Id, Title = "Homepage copy refresh", Description = "Review from marketing team pending.", Position = 0, CreatedAt = now.AddDays(-2) },
-            new Card { ListId = review.Id, Title = "Footer component", Position = 1, CreatedAt = now.AddDays(-1) },
+            new Card { ListId = review.Id, CreatedByUserId = ownerId, Title = "Homepage copy refresh", Description = "Review from marketing team pending.", Position = 0, CreatedAt = now.AddDays(-2) },
+            new Card { ListId = review.Id, CreatedByUserId = ownerId, Title = "Footer component", Position = 1, CreatedAt = now.AddDays(-1) },
 
-            new Card { ListId = shipped.Id, Title = "Set up analytics events", Position = 0, CreatedAt = now.AddDays(-14) },
-            new Card { ListId = shipped.Id, Title = "Fix CLS on product cards", Position = 1, CreatedAt = now.AddDays(-10) },
-            new Card { ListId = shipped.Id, Title = "Deploy preview environments", Position = 2, CreatedAt = now.AddDays(-8) },
+            new Card { ListId = shipped.Id, CreatedByUserId = ownerId, Title = "Set up analytics events", Position = 0, CreatedAt = now.AddDays(-14) },
+            new Card { ListId = shipped.Id, CreatedByUserId = ownerId, Title = "Fix CLS on product cards", Position = 1, CreatedAt = now.AddDays(-10) },
+            new Card { ListId = shipped.Id, CreatedByUserId = ownerId, Title = "Deploy preview environments", Position = 2, CreatedAt = now.AddDays(-8) },
         };
         db.Cards.AddRange(cards);
         await db.SaveChangesAsync(ct);
@@ -223,22 +223,22 @@ public static class DbSeeder
 
         var cards = new[]
         {
-            new Card { ListId = planned.Id, Title = "Bulk card import (CSV)", Description = "Upload a CSV and create cards in a target list. Needs a template file and error reporting.", Position = 0, CreatedAt = now },
-            new Card { ListId = planned.Id, Title = "Board templates", Position = 1, CreatedAt = now },
-            new Card { ListId = planned.Id, Title = "Mobile app (React Native)", Position = 2, CreatedAt = now },
-            new Card { ListId = planned.Id, Title = "GitHub integration", Description = "Link cards to issues and PRs; auto-move on merge.", Position = 3, CreatedAt = now },
+            new Card { ListId = planned.Id, CreatedByUserId = ownerId, Title = "Bulk card import (CSV)", Description = "Upload a CSV and create cards in a target list. Needs a template file and error reporting.", Position = 0, CreatedAt = now },
+            new Card { ListId = planned.Id, CreatedByUserId = ownerId, Title = "Board templates", Position = 1, CreatedAt = now },
+            new Card { ListId = planned.Id, CreatedByUserId = ownerId, Title = "Mobile app (React Native)", Position = 2, CreatedAt = now },
+            new Card { ListId = planned.Id, CreatedByUserId = ownerId, Title = "GitHub integration", Description = "Link cards to issues and PRs; auto-move on merge.", Position = 3, CreatedAt = now },
 
-            new Card { ListId = active.Id, Title = "Real-time collaboration polish", Description = "Smooth out SSE reconnect and cursor presence.", Position = 0, DueDate = now.AddDays(14), CreatedAt = now },
-            new Card { ListId = active.Id, Title = "Per-card time tracking", Description = "Start/stop timer per card, aggregate per list and per user.", Position = 1, DueDate = now.AddDays(21), CreatedAt = now },
-            new Card { ListId = active.Id, Title = "Investigate Postgres connection pool tuning", Position = 2, CreatedAt = now },
+            new Card { ListId = active.Id, CreatedByUserId = ownerId, Title = "Real-time collaboration polish", Description = "Smooth out SSE reconnect and cursor presence.", Position = 0, DueDate = now.AddDays(14), CreatedAt = now },
+            new Card { ListId = active.Id, CreatedByUserId = ownerId, Title = "Per-card time tracking", Description = "Start/stop timer per card, aggregate per list and per user.", Position = 1, DueDate = now.AddDays(21), CreatedAt = now },
+            new Card { ListId = active.Id, CreatedByUserId = ownerId, Title = "Investigate Postgres connection pool tuning", Position = 2, CreatedAt = now },
 
-            new Card { ListId = blocked.Id, Title = "Shared boards (multi-user)", Description = "Blocked on auth model redesign — waiting for Q3 OKRs.", Position = 0, CreatedAt = now },
-            new Card { ListId = blocked.Id, Title = "SSO with Google / GitHub", Position = 1, CreatedAt = now },
+            new Card { ListId = blocked.Id, CreatedByUserId = ownerId, Title = "Shared boards (multi-user)", Description = "Blocked on auth model redesign — waiting for Q3 OKRs.", Position = 0, CreatedAt = now },
+            new Card { ListId = blocked.Id, CreatedByUserId = ownerId, Title = "SSO with Google / GitHub", Position = 1, CreatedAt = now },
 
-            new Card { ListId = completed.Id, Title = "Dark mode support", Position = 0, CreatedAt = now.AddDays(-20) },
-            new Card { ListId = completed.Id, Title = "Card archiving", Position = 1, CreatedAt = now.AddDays(-15) },
-            new Card { ListId = completed.Id, Title = "Fix drag-and-drop between lists", Description = "Cards couldn't move between lists after the list-level drag feature was added. Fixed by switching from cdkDropListGroup to explicit cdkDropListConnectedTo.", Position = 2, CreatedAt = now.AddDays(-1) },
-            new Card { ListId = completed.Id, Title = "Dockerize full stack", Position = 3, CreatedAt = now.AddDays(-1) },
+            new Card { ListId = completed.Id, CreatedByUserId = ownerId, Title = "Dark mode support", Position = 0, CreatedAt = now.AddDays(-20) },
+            new Card { ListId = completed.Id, CreatedByUserId = ownerId, Title = "Card archiving", Position = 1, CreatedAt = now.AddDays(-15) },
+            new Card { ListId = completed.Id, CreatedByUserId = ownerId, Title = "Fix drag-and-drop between lists", Description = "Cards couldn't move between lists after the list-level drag feature was added. Fixed by switching from cdkDropListGroup to explicit cdkDropListConnectedTo.", Position = 2, CreatedAt = now.AddDays(-1) },
+            new Card { ListId = completed.Id, CreatedByUserId = ownerId, Title = "Dockerize full stack", Position = 3, CreatedAt = now.AddDays(-1) },
         };
         db.Cards.AddRange(cards);
         await db.SaveChangesAsync(ct);
